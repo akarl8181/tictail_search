@@ -6,3 +6,5 @@ itsdangerous==0.24
 py==1.4.27
 pytest==2.7.0
 wsgiref==0.1.2
+mock==1.0.1
+geoindex==0.0.1
