@@ -53,8 +53,12 @@ def humanize_werkzeug_client(client_method):
 @pytest.fixture(scope='session', autouse=True)
 def app(request):
     """Session-wide test `Flask` application."""
+    parent = os.path.dirname(__file__)
+    data_path = os.path.join(parent, 'data')
+
     app = create_app({
-        'TESTING': True
+        'TESTING': True,
+        'DATA_PATH': data_path
     })
 
     # Establish an application context before running the tests.
@@ -69,7 +73,7 @@ def app(request):
 
 
 @pytest.fixture(scope='function')
-def client(app, session, request):
+def client(app):
     return app.test_client()
 
 

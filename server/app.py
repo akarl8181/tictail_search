@@ -7,19 +7,23 @@ from server.api import api
 
 def create_app(settings_overrides=None):
     app = Flask(__name__)
-    configure_settings(app)
+    configure_settings(app, settings_overrides)
     configure_blueprints(app)
+
     return app
 
 
-def configure_settings(app):
+def configure_settings(app, settings_overrides):
     parent = os.path.dirname(__file__)
     data_path = os.path.join(parent, '..', 'data')
     app.config.update({
         'DEBUG': True,
         'TESTING': False,
-        'DATA_PATH': data_path
+        'DATA_PATH': data_path,
     })
+
+    if settings_overrides:
+        app.config.update(settings_overrides)
 
 
 def configure_blueprints(app):
