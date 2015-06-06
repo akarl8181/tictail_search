@@ -1,33 +1,7 @@
 # -*- coding: utf-8 -*-
-"""
-products.csv
-shops.csv
-taggings.csv
-tags.csv
-"""
 import csv
-import operator
 import geoindex
 import itertools
-
-
-class Shop(object):
-    def __init__(self, id, name, lat, lng, tags=None):
-        self.id = id
-        self.name = name
-        self.lat = float(lat)
-        self.lng = float(lng)
-        self.distance = None
-        self.tags = tags
-
-
-class Product(object):
-    def __init__(self, id, shop_id, title, popularity, quantity):
-        self.id = id
-        self.shop_id = shop_id
-        self.title = title
-        self.popularity = float(popularity)
-        self.quantity = float(quantity)
 
 
 class TagIndex(dict):
@@ -56,30 +30,40 @@ class ShopIndex(dict):
                 tags[tag['shop_id']].append(tag['tag_id'])
 
         for shop in load_data(shops):
-            shop_object = Shop(
-                tags=tags.get(shop['id'], None),
-                **shop
-            )
-            self[shop['id']] = shop_object
+            shop['lat'] = float(shop['lat'])
+            shop['lng'] = float(shop['lng'])
+            shop['tags'] = tags.get(shop['id'], [])
+
+            self[shop['id']] = shop
 
             self.geoindex.add_point(
                 geoindex.GeoPoint(
-                    shop_object.lat,
-                    shop_object.lng,
-                    ref=shop_object
+                    shop['lat'],
+                    shop['lng'],
+                    ref=shop
                 )
             )
 
-    def shops_within_radius(self, lat, lng, radius):
-        def get_shops():
-            center_point = geoindex.GeoPoint(lat, lng)
-            points = self.geoindex.get_nearest_points(center_point, radius, 'km')
+    def shops_within_radius(self, lat, lng, radius, tags=None):
+        center_point = geoindex.GeoPoint(lat, lng)
+        points = self.geoindex.get_nearest_points(center_point, radius, 'km')
 
+        def tags_filter(shops):
+            for shop in shops:
+                for tag in tags:
+                    if tag in shop['tags']:
+                        yield shop
+                        break
+
+        def get_shops():
             for point, distance in points:
-                point.ref.distance = distance
+                point.ref['distance'] = distance
                 yield point.ref
 
-        return sort_by(get_shops(), 'distance')
+        if tags:
+            return get_shops()
+        else:
+            return tags_filter(get_shops())
 
 
 class ProductIndex(dict):
@@ -92,33 +76,20 @@ class ProductIndex(dict):
         """
         Loads data from `filepath`.
         """
-        products = load_data(filepath)
+        for product in load_data(filepath):
+            if product['shop_id'] not in self:
+                self[product['shop_id']] = []
 
-        for product in products:
-            product_obj = Product(**product)
-
-            if product_obj.shop_id not in self:
-                self[product_obj.shop_id] = []
-
-            self[product_obj.shop_id].append(product_obj)
+            product['popularity'] = float(product['popularity'])
+            product['quantity'] = int(product['quantity'])
+            self[product['shop_id']].append(product)
 
     def products_in_shops(self, shop_ids):
         """
         Returns a list of products in `shop_ids`, sorted by popularity.
         """
-        def get_products():
-            for product in itertools.chain(*(self[shop_id] for shop_id in shop_ids)):
-                yield product
-
-        return sort_by(get_products(), 'popularity', True)
-
-
-def sort_by(items, by, reverse=False):
-    """
-    Sorts a list/iterator.
-    `by` needs to be an attribute of each item.
-    """
-    return sorted(items, key=operator.attrgetter(by), reverse=reverse)
+        for product in itertools.chain(*(self.get(shop_id, []) for shop_id in shop_ids)):
+            yield product
 
 
 def load_data(filepath):

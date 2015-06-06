@@ -11,19 +11,23 @@ class TestShopIndex(object):
         shopindex = models.ShopIndex(shops='tests/data/shops.csv', taggings='tests/data/taggings.csv')
 
         shop = shopindex['4aa53e646bf84faca9a76c020b0682de']
-        assert len(shop.tags) == 2
+        assert len(shop['tags']) == 2
 
     def test_shops_within_radius(self):
         shopindex = models.ShopIndex(shops='tests/data/shops.csv')
 
         shops = shopindex.shops_within_radius(59.33265972650577, 18.06061237898499, 3)
 
-        assert len(shops) == 5
+        assert len(list(shops)) == 5
 
-        last_distance = 0
-        for shop in shops:
-            assert shop.distance >= last_distance
-            last_distance = shop.distance
+    def test_shops_within_radius_tags(self):
+        shopindex = models.ShopIndex(shops='tests/data/shops.csv', taggings='tests/data/taggings.csv')
+
+        tags = ['4202dd8da64d4ebea7577f0f2b2e991b', '10e0e321984842cb877941ff66f7f349']
+
+        shops = shopindex.shops_within_radius(59.33265972650577, 18.06061237898499, 3, tags)
+
+        assert len(list(shops)) == 1
 
 
 class TestTagIndex(object):
@@ -43,13 +47,7 @@ class TestProductIndex(object):
 
         products = productindex.products_in_shops(shop_ids)
 
-        last_popularity = 1
-        for product in products:
-            # Make sure it sored correctly.
-            assert product.popularity <= last_popularity
-            # Make sure it only returned products from shops in shop_ids.
-            assert product.shop_id in shop_ids
-            last_popularity = product.popularity
+        assert len(list(products)) == 2
 
     def __test_performance(self):
         import timeit
