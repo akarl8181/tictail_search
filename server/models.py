@@ -12,12 +12,13 @@ import itertools
 
 
 class Shop(object):
-    def __init__(self, id, name, lat, lng):
+    def __init__(self, id, name, lat, lng, tags=None):
         self.id = id
         self.name = name
         self.lat = float(lat)
         self.lng = float(lng)
         self.distance = None
+        self.tags = tags
 
 
 class Product(object):
@@ -29,22 +30,38 @@ class Product(object):
         self.quantity = float(quantity)
 
 
-class ShopIndex(object):
+class TagIndex(dict):
+    def __init__(self, tags):
+        for tag in load_data(tags):
+            self[tag['id']] = tag['tag']
+
+
+class ShopIndex(dict):
     """
     Index of shops.
     Wrapper around `geindex.GeoGridIndex` for spatial indexing of shops
     The data is loaded when this class is initialized.
     """
-    def __init__(self, filepath):
+    def __init__(self, shops, taggings=None):
         """
         Loads data from `filepath`.
         """
         self.geoindex = geoindex.GeoGridIndex(precision=4)
+        tags = {}
 
-        shops = load_data(filepath)
+        if taggings:
+            for tag in load_data(taggings):
+                if not tag['shop_id'] in tags:
+                    tags[tag['shop_id']] = []
+                tags[tag['shop_id']].append(tag['tag_id'])
 
-        for shop in shops:
-            shop_object = Shop(**shop)
+        for shop in load_data(shops):
+            shop_object = Shop(
+                tags=tags.get(shop['id'], None),
+                **shop
+            )
+            self[shop['id']] = shop_object
+
             self.geoindex.add_point(
                 geoindex.GeoPoint(
                     shop_object.lat,

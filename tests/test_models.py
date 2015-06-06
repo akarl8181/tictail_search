@@ -4,11 +4,17 @@ from server import models
 
 class TestShopIndex(object):
     def test_loads_data_on_init(self):
-        shopindex = models.ShopIndex(filepath='tests/data/shops.csv')
-        assert len(shopindex.geoindex.data.keys()) > 0
+        shopindex = models.ShopIndex(shops='tests/data/shops.csv')
+        assert len(shopindex.keys()) > 0
+
+    def test_loads_tags(self):
+        shopindex = models.ShopIndex(shops='tests/data/shops.csv', taggings='tests/data/taggings.csv')
+
+        shop = shopindex['4aa53e646bf84faca9a76c020b0682de']
+        assert len(shop.tags) == 2
 
     def test_shops_within_radius(self):
-        shopindex = models.ShopIndex(filepath='tests/data/shops.csv')
+        shopindex = models.ShopIndex(shops='tests/data/shops.csv')
 
         shops = shopindex.shops_within_radius(59.33265972650577, 18.06061237898499, 3)
 
@@ -18,6 +24,12 @@ class TestShopIndex(object):
         for shop in shops:
             assert shop.distance >= last_distance
             last_distance = shop.distance
+
+
+class TestTagIndex(object):
+    def test_loads_data_on_init(self):
+        tagindex = models.TagIndex(tags='tests/data/tags.csv')
+        assert len(tagindex.keys()) > 0
 
 
 class TestProductIndex(object):
