@@ -157,7 +157,15 @@
     this.prefs = prefs;
 
     this.search = function(cb) {
-      $.getJSON('http://localhost:5000/search', function(data) {
+      var data = {
+        limit: self.prefs.count,
+        radius: self.prefs.radius / 1000,  // The api takes radius in km
+        lat: self.prefs.position.lat,
+        lng: self.prefs.position.lng,
+        tags: self.prefs.tags.join(','),
+      };
+
+      $.getJSON('http://localhost:5000/search', data, function(data) {
         cb(null, data.products);
       });
     };

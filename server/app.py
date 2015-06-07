@@ -3,10 +3,12 @@
 import os
 from flask import Flask
 from server.api import api
+from flask_cors import CORS
 
 
 def create_app(settings_overrides=None):
     app = Flask(__name__)
+    CORS(app)
     configure_settings(app, settings_overrides)
     configure_blueprints(app)
 
