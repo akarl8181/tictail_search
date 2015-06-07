@@ -1,13 +1,6 @@
 # -*- coding: utf-8 -*-
 import csv
 import geoindex
-import itertools
-
-
-class TagIndex(dict):
-    def __init__(self, tags):
-        for tag in load_data(tags):
-            self[tag['id']] = tag['tag']
 
 
 class ShopIndex(dict):
@@ -16,23 +9,31 @@ class ShopIndex(dict):
     Wrapper around `geindex.GeoGridIndex` for spatial indexing of shops
     The data is loaded when this class is initialized.
     """
-    def __init__(self, shops, taggings=None):
+    def __init__(self, shops, tags=None, taggings=None):
         """
         Loads data from `filepath`.
         """
         self.geoindex = geoindex.GeoGridIndex(precision=4)
-        tags = {}
+        tagindex = {}
+        taggingsindex = {}
 
-        if taggings:
-            for tag in load_data(taggings):
-                if not tag['shop_id'] in tags:
-                    tags[tag['shop_id']] = []
-                tags[tag['shop_id']].append(tag['tag_id'])
+        if tags and taggings:
+            for tag in load_data(tags):
+                tagindex[tag['id']] = tag['tag']
+
+            for tagging in load_data(taggings):
+                shop_id = tagging['shop_id']
+                tag_id = tagging['tag_id']
+                tag_name = tagindex[tag_id]
+
+                if shop_id not in taggingsindex:
+                    taggingsindex[shop_id] = []
+                taggingsindex[shop_id].append(tag_name)
 
         for shop in load_data(shops):
             shop['lat'] = float(shop['lat'])
             shop['lng'] = float(shop['lng'])
-            shop['tags'] = tags.get(shop['id'], [])
+            shop['tags'] = taggingsindex.get(shop['id'], [])
 
             self[shop['id']] = shop
 
@@ -45,6 +46,12 @@ class ShopIndex(dict):
             )
 
     def shops_within_radius(self, lat, lng, radius, tags=None):
+        """
+        Searches shops within `radius`.
+        `tags` should be a list of tag names, it will find shops
+        that has *any* of the tags defined.
+        Returns a generator of shops.
+        """
         center_point = geoindex.GeoPoint(lat, lng)
         points = self.geoindex.get_nearest_points(center_point, radius, 'km')
 
@@ -61,9 +68,9 @@ class ShopIndex(dict):
                 yield point.ref
 
         if tags:
-            return get_shops()
-        else:
             return tags_filter(get_shops())
+        else:
+            return get_shops()
 
 
 class ProductIndex(dict):
@@ -84,17 +91,21 @@ class ProductIndex(dict):
             product['quantity'] = int(product['quantity'])
             self[product['shop_id']].append(product)
 
-    def products_in_shops(self, shop_ids):
+    def products_in_shops(self, shops):
         """
-        Returns a list of products in `shop_ids`, sorted by popularity.
+        Gets all the products inside `shops`.
+        `shops` needs to be an iterable with of dicts which contain
+        the shop id as key. `shop = {'id': 'eiowfh33flj...'}`.
+        Returns a generator of products.
         """
-        for product in itertools.chain(*(self.get(shop_id, []) for shop_id in shop_ids)):
-            yield product
+        for shop in shops:
+            for product in self[shop['id']]:
+                product['shop'] = shop
+                yield product
 
 
 def load_data(filepath):
     """
-    Iterator.
     Loads data from a csv file and yields dicts for each row.
     """
     with open(filepath) as csvfile:

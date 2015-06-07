@@ -26,7 +26,7 @@ class TestAPI(object):
             response = get('/search', query_string={
                 'lat': 59.00,
                 'lng':  18.00,
-                'radius': 300
+                'radius': 0.3
             })
 
             shops_within_radius.assert_called_once_with(
@@ -36,7 +36,7 @@ class TestAPI(object):
                 tags=None
             )
 
-            assert list(products_in_shops.call_args[0][0]) == ['shop1', 'shop2', 'shop3', 'shop4']
+            assert list(products_in_shops.call_args[0][0]) == shops_within_radius.return_value
             assert response.json['products'][0] == products_in_shops.return_value[3]
 
     def test_limit(self, get):
@@ -55,8 +55,7 @@ class TestAPI(object):
                 'limit': 2
             })
 
-            assert response.json['count'] == 2
-            assert response.json['count'] == len(response.json['products'])
+            assert 2 == len(response.json['products'])
 
     def test_sort(self, get):
         with mock.patch('server.api.productindex') as productindex:
@@ -70,7 +69,7 @@ class TestAPI(object):
             response = get('/search', query_string={
                 'lat': 59.00,
                 'lng':  18.00,
-                'radius': 300,
+                'radius': 3,
                 'limit': 2
             })
 
@@ -88,7 +87,3 @@ class TestAPI(object):
                 radius=mock.ANY,
                 tags=['tag1', 'tag2', 'tag3']
             )
-
-
-
-
